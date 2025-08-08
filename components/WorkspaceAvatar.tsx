@@ -8,8 +8,17 @@ interface workspaceAvatarProps {
   className?: string;
 }
 
+const isValidNextImageSrc = (src: string) => {
+  return (
+    src.startsWith("/") ||
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("data:")
+  );
+};
+
 const WorkspaceAvatar = ({ image, name, className }: workspaceAvatarProps) => {
-  if (image) {
+  if (image && isValidNextImageSrc(image)) {
     return (
       <div
         className={cn("size-10 rounded-md relative overflow-hidden", className)}

@@ -39,7 +39,7 @@ const app = new Hono()
       let uploadedImageUrl: string | undefined;
       if (image instanceof File) {
         const file = await storage.createFile(BUCKET_ID, ID.unique(), image);
-        const arrayBuffer = await storage.getFilePreview(BUCKET_ID, file.$id);
+        const arrayBuffer = await storage.getFileView(BUCKET_ID, file.$id);
 
         uploadedImageUrl = `data:image/png;base64,${Buffer.from(
           arrayBuffer
@@ -143,7 +143,7 @@ const app = new Hono()
 
       if (image instanceof File) {
         const file = await storage.createFile(BUCKET_ID, ID.unique(), image);
-        const arrayBuffer = await storage.getFilePreview(BUCKET_ID, file.$id);
+        const arrayBuffer = await storage.getFileView(BUCKET_ID, file.$id);
 
         uploadedImageUrl = `data:image/png;base64,${Buffer.from(
           arrayBuffer

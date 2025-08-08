@@ -22,6 +22,7 @@ const app = new Hono()
   .get("/", sessionMiddleware, async (c) => {
     const user = c.get("user");
     const databases = c.get("databases");
+    const storage = c.get("storage");
 
     const members = await databases.listDocuments(DATABASE_ID, MEMBERS_ID, [
       Query.equal("userId", user.$id),
@@ -38,7 +39,32 @@ const app = new Hono()
       WORKSPACES_ID,
       [Query.orderDesc("$createdAt"), Query.contains("$id", workspaceIds)]
     );
-    return c.json({ data: workspaces });
+    const documents = await Promise.all(
+      workspaces.documents.map(async (doc) => {
+        if (
+          doc.imageUrl &&
+          typeof doc.imageUrl === "string" &&
+          !doc.imageUrl.startsWith("http") &&
+          !doc.imageUrl.startsWith("data:") &&
+          !doc.imageUrl.startsWith("/")
+        ) {
+          try {
+            const arrayBuffer = await storage.getFileView(
+              BUCKET_ID,
+              doc.imageUrl
+            );
+            const dataUrl = `data:image/png;base64,${Buffer.from(
+              arrayBuffer
+            ).toString("base64")}`;
+            return { ...doc, imageUrl: dataUrl } as Workspace;
+          } catch {
+            return doc as Workspace;
+          }
+        }
+        return doc as Workspace;
+      })
+    );
+    return c.json({ data: { ...workspaces, documents } });
   })
   .post(
     "/",
@@ -54,8 +80,7 @@ const app = new Hono()
 
       if (image instanceof File) {
         const file = await storage.createFile(BUCKET_ID, ID.unique(), image);
-        const arrayBuffer = await storage.getFilePreview(BUCKET_ID, file.$id);
-
+        const arrayBuffer = await storage.getFileView(BUCKET_ID, file.$id);
         uploadedImageUrl = `data:image/png;base64,${Buffer.from(
           arrayBuffer
         ).toString("base64")}`;
@@ -83,6 +108,7 @@ const app = new Hono()
   .get("/:workspaceId", sessionMiddleware, async (c) => {
     const user = c.get("user");
     const databases = c.get("databases");
+    const storage = c.get("storage");
     const { workspaceId } = c.req.param();
 
     const member = await getMember({
@@ -94,15 +120,34 @@ const app = new Hono()
     if (!member) {
       return c.json({ error: "Unauthorized" }, 401);
     }
-    const workspace = await databases.getDocument<Workspace>(
+    let workspace = await databases.getDocument<Workspace>(
       DATABASE_ID,
       WORKSPACES_ID,
       workspaceId
     );
+    if (
+      workspace.imageUrl &&
+      typeof workspace.imageUrl === "string" &&
+      !workspace.imageUrl.startsWith("http") &&
+      !workspace.imageUrl.startsWith("data:") &&
+      !workspace.imageUrl.startsWith("/")
+    ) {
+      try {
+        const arrayBuffer = await storage.getFileView(
+          BUCKET_ID,
+          workspace.imageUrl
+        );
+        const dataUrl = `data:image/png;base64,${Buffer.from(
+          arrayBuffer
+        ).toString("base64")}`;
+        workspace = { ...workspace, imageUrl: dataUrl } as Workspace;
+      } catch {}
+    }
     return c.json({ data: workspace });
   })
   .get("/:workspaceId/info", sessionMiddleware, async (c) => {
     const databases = c.get("databases");
+    const storage = c.get("storage");
     const { workspaceId } = c.req.param();
 
     const workspace = await databases.getDocument<Workspace>(
@@ -110,11 +155,26 @@ const app = new Hono()
       WORKSPACES_ID,
       workspaceId
     );
+    let imageUrl = workspace.imageUrl;
+    if (
+      imageUrl &&
+      typeof imageUrl === "string" &&
+      !imageUrl.startsWith("http") &&
+      !imageUrl.startsWith("data:") &&
+      !imageUrl.startsWith("/")
+    ) {
+      try {
+        const arrayBuffer = await storage.getFileView(BUCKET_ID, imageUrl);
+        imageUrl = `data:image/png;base64,${Buffer.from(arrayBuffer).toString(
+          "base64"
+        )}`;
+      } catch {}
+    }
     return c.json({
       data: {
         $id: workspace.$id,
         name: workspace.name,
-        imageUrl: workspace.imageUrl,
+        imageUrl,
       },
     });
   })
@@ -144,13 +204,24 @@ const app = new Hono()
 
       if (image instanceof File) {
         const file = await storage.createFile(BUCKET_ID, ID.unique(), image);
-        const arrayBuffer = await storage.getFilePreview(BUCKET_ID, file.$id);
-
+        const arrayBuffer = await storage.getFileView(BUCKET_ID, file.$id);
         uploadedImageUrl = `data:image/png;base64,${Buffer.from(
           arrayBuffer
         ).toString("base64")}`;
-      } else {
-        uploadedImageUrl = image;
+      } else if (typeof image === "string") {
+        // If the existing value is a raw Appwrite file id, convert to preview data URL
+        if (image && !image.startsWith("data:") && !image.startsWith("http")) {
+          try {
+            const arrayBuffer = await storage.getFileView(BUCKET_ID, image);
+            uploadedImageUrl = `data:image/png;base64,${Buffer.from(
+              arrayBuffer
+            ).toString("base64")}`;
+          } catch {
+            uploadedImageUrl = image; // fallback to whatever was provided
+          }
+        } else {
+          uploadedImageUrl = image;
+        }
       }
 
       const workspace = await databases.updateDocument(
