@@ -3,9 +3,17 @@ import { redirect } from "next/navigation";
 import React from "react";
 import WorkspaceIdJoinClient from "./client";
 
-const WorkspaceIdJoinPage = async () => {
+const WorkspaceIdJoinPage = async ({
+  params,
+}: {
+  params: Promise<{ id: string; inviteCode: string }>;
+}) => {
   const user = await getCurrent();
-  if (!user) redirect("/sign-in");
+  const { id, inviteCode } = await params;
+  if (!user) {
+    const callbackUrl = `/workspaces/${id}/join/${inviteCode}`;
+    redirect(`/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  }
   return <WorkspaceIdJoinClient />;
 };
 

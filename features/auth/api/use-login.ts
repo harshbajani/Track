@@ -7,7 +7,7 @@ import { toast } from "sonner";
 type ResponseType = InferResponseType<(typeof client.api.auth.login)["$post"]>;
 type RequestType = InferRequestType<(typeof client.api.auth.login)["$post"]>;
 
-export const useLogin = () => {
+export const useLogin = (callbackUrl?: string) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const mutation = useMutation<ResponseType, Error, RequestType>({
@@ -20,8 +20,12 @@ export const useLogin = () => {
     },
     onSuccess: () => {
       toast.success(" Logged in successfully");
-      router.refresh();
       queryClient.invalidateQueries({ queryKey: ["current"] });
+      if (callbackUrl) {
+        router.push(callbackUrl);
+      } else {
+        router.refresh();
+      }
     },
     onError: () => {
       toast.error("Failed to login");

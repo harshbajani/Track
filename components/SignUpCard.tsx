@@ -27,8 +27,8 @@ import { registerSchema } from "@/lib/validation";
 import { useRegister } from "@/features/auth/api/use-register";
 import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 
-const SignUpCard = () => {
-  const { mutate, isPending } = useRegister();
+const SignUpCard = ({ callbackUrl }: { callbackUrl?: string }) => {
+  const { mutate, isPending } = useRegister(callbackUrl);
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -126,7 +126,7 @@ const SignUpCard = () => {
       </div>
       <div className="p-7 flex flex-col gap-y-4">
         <Button
-          onClick={() => signUpWithGoogle()}
+          onClick={() => signUpWithGoogle(callbackUrl)}
           variant="secondary"
           size="lg"
           className="w-full"
@@ -136,7 +136,7 @@ const SignUpCard = () => {
           Login with Google
         </Button>
         <Button
-          onClick={() => signUpWithGithub()}
+          onClick={() => signUpWithGithub(callbackUrl)}
           variant="secondary"
           size="lg"
           className="w-full"
@@ -152,7 +152,13 @@ const SignUpCard = () => {
       <CardContent className="p-7 flex items-center justify-center">
         <p>
           Already have an account?{" "}
-          <Link href="/sign-in">
+          <Link
+            href={
+              callbackUrl
+                ? `/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`
+                : "/sign-in"
+            }
+          >
             <span className="text-blue-700">Sign In</span>
           </Link>
         </p>

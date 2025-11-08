@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get("userId");
   const secret = request.nextUrl.searchParams.get("secret");
+  const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
 
   if (!userId || !secret) {
     return new NextResponse("Missing fields", { status: 400 });
@@ -21,5 +22,9 @@ export async function GET(request: NextRequest) {
     secure: true,
   });
 
-  return NextResponse.redirect(`${request.nextUrl.origin}/`);
+  const redirectUrl = callbackUrl
+    ? `${request.nextUrl.origin}${callbackUrl}`
+    : `${request.nextUrl.origin}/`;
+
+  return NextResponse.redirect(redirectUrl);
 }

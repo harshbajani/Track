@@ -9,7 +9,7 @@ type ResponseType = InferResponseType<
 >;
 type RequestType = InferRequestType<(typeof client.api.auth.register)["$post"]>;
 
-export const useRegister = () => {
+export const useRegister = (callbackUrl?: string) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const mutation = useMutation<ResponseType, Error, RequestType>({
@@ -22,8 +22,12 @@ export const useRegister = () => {
     },
     onSuccess: () => {
       toast.success(" Registration successful");
-      router.refresh();
       queryClient.invalidateQueries({ queryKey: ["current"] });
+      if (callbackUrl) {
+        router.push(callbackUrl);
+      } else {
+        router.refresh();
+      }
     },
     onError: () => {
       toast.error("Registration failed");
