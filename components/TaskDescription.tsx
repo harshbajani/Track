@@ -23,7 +23,7 @@ const TaskDescription = ({ task }: { task: Task }) => {
   return (
     <div className="p-4 border rounded-lg">
       <div className="flex items-center justify-between">
-        <p className="text-lg font-semibold">Overview</p>
+        <p className="text-lg font-semibold">Description</p>
         <Button
           size="sm"
           variant="secondary"
